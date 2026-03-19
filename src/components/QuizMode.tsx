@@ -9,9 +9,11 @@ import ResultsSummary from "./ResultsSummary";
 interface QuizModeProps {
   questions: ExamQuestion[];
   onExit: () => void;
+  onAnswerSubmit?: (questionId: number, selectedAnswer: string, isCorrect: boolean) => void;
+  onQuizComplete?: (correctCount: number, total: number) => void;
 }
 
-export default function QuizMode({ questions, onExit }: QuizModeProps) {
+export default function QuizMode({ questions, onExit, onAnswerSubmit, onQuizComplete }: QuizModeProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<UserAnswer[]>(
     questions.map((q) => ({ questionId: q.id, selectedAnswer: null, isCorrect: null }))
@@ -33,13 +35,12 @@ export default function QuizMode({ questions, onExit }: QuizModeProps) {
   };
 
   const handleSubmit = () => {
+    const isCorrect = selectedForThisQ === currentQuestion.correctAnswer;
     const updated = [...answers];
-    updated[currentIndex] = {
-      ...updated[currentIndex],
-      isCorrect: selectedForThisQ === currentQuestion.correctAnswer,
-    };
+    updated[currentIndex] = { ...updated[currentIndex], isCorrect };
     setAnswers(updated);
     setIsSubmitted(true);
+    onAnswerSubmit?.(currentQuestion.id, selectedForThisQ!, isCorrect);
   };
 
   const handleNext = () => {
@@ -49,6 +50,9 @@ export default function QuizMode({ questions, onExit }: QuizModeProps) {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
+      const finalAnswers = answers;
+      const correct = finalAnswers.filter((a) => a.isCorrect === true).length;
+      onQuizComplete?.(correct, questions.length);
       setPhase("results");
     }
   };

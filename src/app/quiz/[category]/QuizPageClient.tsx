@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { examQuestions, instructionalAreas } from "@/data/examQuestions";
 import { ExamQuestion } from "@/types/exam";
 import QuizMode from "@/components/QuizMode";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import {
+  createQuizSession,
+  saveQuestionAttempt,
+  completeQuizSession,
+} from "@/lib/supabase/db";
 
 interface QuizConfig {
   size: number;
@@ -23,17 +29,75 @@ export default function QuizPageClient() {
     shuffle: true,
   });
 
-  const startQuiz = () => {
+  // Session tracking
+  const sessionIdRef = useRef<string | null>(null);
+  const userIdRef = useRef<string | null>(null);
+
+  const startQuiz = async () => {
     let pool = [...examQuestions];
     if (config.filterIA) pool = pool.filter((q) => q.instructionalArea === config.filterIA);
     if (config.filterLevel) pool = pool.filter((q) => q.level === config.filterLevel);
     if (config.shuffle) pool = pool.sort(() => Math.random() - 0.5);
-    setQuizQuestions(pool.slice(0, Math.min(config.size, pool.length)));
+    const selected = pool.slice(0, Math.min(config.size, pool.length));
+    setQuizQuestions(selected);
+
+    // Create session in Supabase
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      userIdRef.current = user.id;
+      const sessionId = await createQuizSession({
+        userId: user.id,
+        totalQuestions: selected.length,
+        filterIA: config.filterIA,
+        filterLevel: config.filterLevel,
+      });
+      sessionIdRef.current = sessionId;
+    }
+
     setMode("quiz");
   };
 
+  const handleAnswerSubmit = async (
+    questionId: number,
+    selectedAnswer: string,
+    isCorrect: boolean
+  ) => {
+    const sessionId = sessionIdRef.current;
+    const userId = userIdRef.current;
+    if (!sessionId || !userId) return;
+
+    const question = quizQuestions.find((q) => q.id === questionId);
+    if (!question) return;
+
+    await saveQuestionAttempt({
+      sessionId,
+      userId,
+      questionId,
+      piCode: question.piCode,
+      instructionalArea: question.instructionalArea,
+      level: question.level,
+      selectedAnswer,
+      correctAnswer: question.correctAnswer,
+      isCorrect,
+    });
+  };
+
+  const handleQuizComplete = async (correctCount: number, total: number) => {
+    const sessionId = sessionIdRef.current;
+    if (!sessionId) return;
+    await completeQuizSession(sessionId, correctCount, total);
+  };
+
   if (mode === "quiz") {
-    return <QuizMode questions={quizQuestions} onExit={() => setMode("config")} />;
+    return (
+      <QuizMode
+        questions={quizQuestions}
+        onExit={() => setMode("config")}
+        onAnswerSubmit={handleAnswerSubmit}
+        onQuizComplete={handleQuizComplete}
+      />
+    );
   }
 
   const filteredCount = examQuestions.filter((q) => {
@@ -232,7 +296,7 @@ export default function QuizPageClient() {
                 {[
                   { icon: "📝", title: "Answer Questions", desc: "Multiple choice" },
                   { icon: "🤖", title: "Get AI Coaching", desc: "Instant breakdown" },
-                  { icon: "📊", title: "Track Progress", desc: "Score by area" },
+                  { icon: "📊", title: "Track Progress", desc: "Saved automatically" },
                 ].map((item) => (
                   <div key={item.title} className="flex items-start gap-3">
                     <span className="text-lg">{item.icon}</span>
