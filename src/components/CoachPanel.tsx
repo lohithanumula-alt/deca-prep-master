@@ -39,9 +39,8 @@ export default function CoachPanel({ question, selectedAnswer, onClose }: CoachP
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, selectedAnswer, messages: [] }),
       });
-      if (!response.ok) throw new Error("HTTP " + response.status);
       const data = await response.json();
-      if (data.error) throw new Error("API error: " + data.error);
+      if (!response.ok || data.error) throw new Error("HTTP " + response.status + ": " + (data.error || "unknown"));
       if (!data.text) throw new Error("Empty response from API");
       setMessages([{ role: "assistant", content: data.text }]);
     } catch (err: unknown) {
