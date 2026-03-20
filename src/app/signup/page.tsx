@@ -8,15 +8,23 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const formData = new FormData(e.currentTarget);
-    const result = await signup(formData);
-    if (result?.error) {
-      setError(result.error);
-      setLoading(false);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const result = await signup(formData);
+      if (result?.error) {
+        setError(result.error);
+        setLoading(false);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes("NEXT_REDIRECT")) {
+        setError("Something went wrong. Please try again.");
+        setLoading(false);
+      }
     }
   }
 
