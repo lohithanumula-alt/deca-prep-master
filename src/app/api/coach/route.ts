@@ -1,8 +1,5 @@
-export const runtime = "edge";
-export const maxDuration = 60;
-
 import Anthropic from "@anthropic-ai/sdk";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { ExamQuestion } from "@/types/exam";
 
 const client = new Anthropic({
@@ -60,46 +57,18 @@ Please give me your full coaching breakdown for this question.`;
       { role: "user" as const, content: userMessage },
     ];
 
-    const stream = await client.messages.stream({
-      model: "claude-opus-4-6",
-      max_tokens: 2000,
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 1500,
       system: SYSTEM_PROMPT,
       messages: conversationMessages,
     });
 
-    const encoder = new TextEncoder();
-
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const event of stream) {
-            if (
-              event.type === "content_block_delta" &&
-              event.delta.type === "text_delta"
-            ) {
-              const chunk = encoder.encode(event.delta.text);
-              controller.enqueue(chunk);
-            }
-          }
-          controller.close();
-        } catch (error) {
-          controller.error(error);
-        }
-      },
-    });
-
-    return new Response(readableStream, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Transfer-Encoding": "chunked",
-      },
-    });
+    const text = response.content[0].type === "text" ? response.content[0].text : "";
+    return NextResponse.json({ text });
   } catch (error) {
     console.error("Coach API error:", error);
-    return new Response(JSON.stringify({ error: "Failed to get coaching response" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return NextResponse.json({ error: "Failed to get coaching response" }, { status: 500 });
   }
 }
 
@@ -110,45 +79,17 @@ export async function PUT(request: NextRequest) {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
     };
 
-    const stream = await client.messages.stream({
-      model: "claude-opus-4-6",
-      max_tokens: 1500,
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 1000,
       system: SYSTEM_PROMPT,
       messages,
     });
 
-    const encoder = new TextEncoder();
-
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const event of stream) {
-            if (
-              event.type === "content_block_delta" &&
-              event.delta.type === "text_delta"
-            ) {
-              const chunk = encoder.encode(event.delta.text);
-              controller.enqueue(chunk);
-            }
-          }
-          controller.close();
-        } catch (error) {
-          controller.error(error);
-        }
-      },
-    });
-
-    return new Response(readableStream, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Transfer-Encoding": "chunked",
-      },
-    });
+    const text = response.content[0].type === "text" ? response.content[0].text : "";
+    return NextResponse.json({ text });
   } catch (error) {
     console.error("Coach API error:", error);
-    return new Response(JSON.stringify({ error: "Failed to get response" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return NextResponse.json({ error: "Failed to get response" }, { status: 500 });
   }
 }

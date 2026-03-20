@@ -40,18 +40,9 @@ export default function CoachPanel({ question, selectedAnswer, onClose }: CoachP
         body: JSON.stringify({ question, selectedAnswer, messages: [] }),
       });
       if (!response.ok) throw new Error("Failed");
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("No body");
-      const decoder = new TextDecoder();
-      let fullContent = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        fullContent += decoder.decode(value, { stream: true });
-        setStreamingContent(fullContent);
-      }
-      setMessages([{ role: "assistant", content: fullContent }]);
-      setStreamingContent("");
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      setMessages([{ role: "assistant", content: data.text }]);
     } catch {
       setMessages([{ role: "assistant", content: "Sorry, I had trouble loading the breakdown. Please try again." }]);
     } finally {
@@ -74,18 +65,9 @@ export default function CoachPanel({ question, selectedAnswer, onClose }: CoachP
         body: JSON.stringify({ messages: newMessages }),
       });
       if (!response.ok) throw new Error("Failed");
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("No body");
-      const decoder = new TextDecoder();
-      let fullContent = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        fullContent += decoder.decode(value, { stream: true });
-        setStreamingContent(fullContent);
-      }
-      setMessages([...newMessages, { role: "assistant", content: fullContent }]);
-      setStreamingContent("");
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      setMessages([...newMessages, { role: "assistant", content: data.text }]);
     } catch {
       // silently fail
     } finally {
