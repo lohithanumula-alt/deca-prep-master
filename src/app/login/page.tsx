@@ -17,16 +17,27 @@ export default function LoginPage() {
     const email = (form.elements.namedItem("email") as HTMLInputElement).value;
     const password = (form.elements.namedItem("password") as HTMLInputElement).value;
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      setError(error.message);
+      if (error) {
+        setError("Login error: " + error.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!data.session) {
+        setError("No session returned. Try again.");
+        setLoading(false);
+        return;
+      }
+
+      window.location.href = "/dashboard";
+    } catch (err: unknown) {
+      setError("Unexpected error: " + (err instanceof Error ? err.message : String(err)));
       setLoading(false);
-      return;
     }
-
-    window.location.href = "/dashboard";
   }
 
   return (
