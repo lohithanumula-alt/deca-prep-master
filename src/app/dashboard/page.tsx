@@ -72,7 +72,7 @@ export default async function DashboardPage() {
     user.email?.split("@")[0] ||
     "Student";
 
-  const stats = await getDashboardStats(user.id);
+  const stats = await getDashboardStats(supabase, user.id);
   const hasActivity = stats.totalAttempted > 0;
 
   return (

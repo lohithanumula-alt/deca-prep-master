@@ -1,6 +1,7 @@
 import { createClient } from "./client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-// ── Sessions ──────────────────────────────────────────────
+// ── Sessions (browser client — called from client components) ──
 
 export async function createQuizSession(opts: {
   userId: string;
@@ -45,7 +46,7 @@ export async function completeQuizSession(
   if (error) console.error("completeQuizSession:", error.message);
 }
 
-// ── Attempts ──────────────────────────────────────────────
+// ── Attempts (browser client — called from client components) ──
 
 export async function saveQuestionAttempt(opts: {
   sessionId: string;
@@ -74,20 +75,18 @@ export async function saveQuestionAttempt(opts: {
   if (error) console.error("saveQuestionAttempt:", error.message);
 }
 
-// ── Dashboard stats ───────────────────────────────────────
+// ── Dashboard stats (server client — passed in from server component) ──
 
-export async function getDashboardStats(userId: string) {
-  const supabase = createClient();
-
-  // Run queries in parallel
+export async function getDashboardStats(
+  supabase: SupabaseClient,
+  userId: string
+) {
   const [attemptsRes, sessionsRes, iaRes, piRes] = await Promise.all([
-    // Overall stats
     supabase
       .from("question_attempts")
       .select("is_correct")
       .eq("user_id", userId),
 
-    // Recent 5 completed sessions
     supabase
       .from("quiz_sessions")
       .select("id, started_at, completed_at, total_questions, correct_count, score_pct, filter_ia, filter_level")
@@ -96,14 +95,12 @@ export async function getDashboardStats(userId: string) {
       .order("completed_at", { ascending: false })
       .limit(5),
 
-    // Per-IA accuracy
     supabase
       .from("ia_performance")
       .select("instructional_area, attempts, correct, accuracy_pct")
       .eq("user_id", userId)
       .order("accuracy_pct", { ascending: true }),
 
-    // Weakest PIs (bottom 5)
     supabase
       .from("pi_performance")
       .select("pi_code, instructional_area, attempts, correct, accuracy_pct")
@@ -116,9 +113,10 @@ export async function getDashboardStats(userId: string) {
   const attempts = attemptsRes.data ?? [];
   const totalAttempted = attempts.length;
   const totalCorrect = attempts.filter((a) => a.is_correct).length;
-  const overallPct = totalAttempted > 0
-    ? Math.round((totalCorrect / totalAttempted) * 100)
-    : null;
+  const overallPct =
+    totalAttempted > 0
+      ? Math.round((totalCorrect / totalAttempted) * 100)
+      : null;
 
   return {
     totalAttempted,
