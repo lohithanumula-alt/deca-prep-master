@@ -1,3 +1,6 @@
+export const runtime = "edge";
+export const maxDuration = 60;
+
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { ExamQuestion } from "@/types/exam";
