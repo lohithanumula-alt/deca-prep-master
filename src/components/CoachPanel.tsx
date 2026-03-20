@@ -39,12 +39,13 @@ export default function CoachPanel({ question, selectedAnswer, onClose }: CoachP
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, selectedAnswer, messages: [] }),
       });
-      if (!response.ok) throw new Error("Failed");
+      if (!response.ok) throw new Error("HTTP " + response.status);
       const data = await response.json();
-      if (data.error) throw new Error(data.error);
+      if (data.error) throw new Error("API error: " + data.error);
+      if (!data.text) throw new Error("Empty response from API");
       setMessages([{ role: "assistant", content: data.text }]);
-    } catch {
-      setMessages([{ role: "assistant", content: "Sorry, I had trouble loading the breakdown. Please try again." }]);
+    } catch (err: unknown) {
+      setMessages([{ role: "assistant", content: "DEBUG ERROR: " + (err instanceof Error ? err.message : String(err)) }]);
     } finally {
       setIsLoading(false);
     }
