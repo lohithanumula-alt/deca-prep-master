@@ -67,8 +67,8 @@ Please give me your full coaching breakdown for this question.`;
     const text = response.content[0].type === "text" ? response.content[0].text : "";
     return NextResponse.json({ text });
   } catch (error) {
-    console.error("Coach API error:", error);
-    return NextResponse.json({ error: "Failed to get coaching response" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
