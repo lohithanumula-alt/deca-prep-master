@@ -21,24 +21,30 @@ export async function login(formData: FormData) {
 }
 
 export async function signup(formData: FormData) {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const { error } = await supabase.auth.signUp({
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-    options: {
-      data: {
-        full_name: formData.get("full_name") as string,
+    const { error } = await supabase.auth.signUp({
+      email: formData.get("email") as string,
+      password: formData.get("password") as string,
+      options: {
+        data: {
+          full_name: formData.get("full_name") as string,
+        },
       },
-    },
-  });
+    });
 
-  if (error) {
-    return { error: error.message };
+    if (error) {
+      return { error: error.message };
+    }
+
+    revalidatePath("/", "layout");
+    redirect("/dashboard");
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("NEXT_REDIRECT")) throw err;
+    return { error: `Signup failed: ${msg}` };
   }
-
-  revalidatePath("/", "layout");
-  redirect("/dashboard");
 }
 
 export async function logout() {
